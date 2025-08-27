@@ -105,7 +105,29 @@ class TextExtractor {
     let content = '';
     if (targetElements.length > 0) {
       console.log(`📊 找到${targetElements.length}个目标元素`);
-      for (const element of Array.from(targetElements)) {
+      
+      // 创建一个数组来存储唯一的元素
+      const uniqueElements: Element[] = [];
+      
+      // 将NodeList转换为数组并过滤可见元素
+      const elementsArray = Array.from(targetElements).filter(el => this.isElementVisible(el));
+      
+      // 过滤出不重复的元素（避免父元素和子元素都被提取导致重复内容）
+      for (let i = 0; i < elementsArray.length; i++) {
+        let isChild = false;
+        for (let j = 0; j < elementsArray.length; j++) {
+          if (i !== j && elementsArray[j].contains(elementsArray[i])) {
+            isChild = true;
+            break;
+          }
+        }
+        if (!isChild) {
+          uniqueElements.push(elementsArray[i]);
+        }
+      }
+      
+      // 提取唯一元素的文本内容
+      for (const element of uniqueElements) {
         content += this.getAllDirectText(element) + '\n';
       }
     } else {
