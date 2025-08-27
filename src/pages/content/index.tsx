@@ -99,39 +99,68 @@ class TextExtractor {
     console.log('📊 开始提取页面文本...');
     
     // 查找指定的元素：main标签、id为main的元素、class为main的元素，以及footer标签
-    const targetElements = body.querySelectorAll('main, #main, .main, footer');
-    
-    // 如果找到了指定元素，则只提取这些元素中的文本
     let content = '';
-    if (targetElements.length > 0) {
-      console.log(`📊 找到${targetElements.length}个目标元素`);
-      
-      // 创建一个数组来存储唯一的元素
-      const uniqueElements: Element[] = [];
-      
-      // 将NodeList转换为数组并过滤可见元素
-      const elementsArray = Array.from(targetElements).filter(el => this.isElementVisible(el));
-      
-      // 过滤出不重复的元素（避免父元素和子元素都被提取导致重复内容）
-      for (let i = 0; i < elementsArray.length; i++) {
-        let isChild = false;
-        for (let j = 0; j < elementsArray.length; j++) {
-          if (i !== j && elementsArray[j].contains(elementsArray[i])) {
-            isChild = true;
-            break;
-          }
-        }
-        if (!isChild) {
-          uniqueElements.push(elementsArray[i]);
-        }
+    let foundMain = false;
+    let mainElement: Element | null = null;
+    
+    // 查找main标签元素
+    const mainTagElements = body.querySelectorAll('main');
+    if (mainTagElements.length > 0) {
+      console.log(`📊 找到${mainTagElements.length}个<main>标签元素`);
+      Array.from(mainTagElements)
+        .filter(el => this.isElementVisible(el))
+        .forEach(el => {
+          content += this.getAllDirectText(el) + '\n';
+          mainElement = el;
+        });
+      foundMain = true;
+    }
+    
+    // 如果没有找到main标签，查找id为main的元素
+    if (!foundMain) {
+      const idMainElements = body.querySelectorAll('#main');
+      if (idMainElements.length > 0) {
+        console.log(`📊 找到${idMainElements.length}个id='main'的元素`);
+        Array.from(idMainElements)
+          .filter(el => this.isElementVisible(el))
+          .forEach(el => {
+            content += this.getAllDirectText(el) + '\n';
+            mainElement = el;
+          });
+        foundMain = true;
       }
-      
-      // 提取唯一元素的文本内容
-      for (const element of uniqueElements) {
-        content += this.getAllDirectText(element) + '\n';
+    }
+    
+    // 如果没有找到id为main的元素，查找class为main的元素
+    if (!foundMain) {
+      const classMainElements = body.querySelectorAll('.main');
+      if (classMainElements.length > 0) {
+        console.log(`📊 找到${classMainElements.length}个class='main'的元素`);
+        Array.from(classMainElements)
+          .filter(el => this.isElementVisible(el))
+          .forEach(el => {
+            content += this.getAllDirectText(el) + '\n';
+            mainElement = el;
+          });
+        foundMain = true;
       }
-    } else {
-      // 如果没有找到指定元素，则提取整个body的文本
+    }
+    
+    // 查找footer标签元素（如果main元素不包含footer）
+    const footerElements = body.querySelectorAll('footer');
+    if (footerElements.length > 0) {
+      console.log(`📊 找到${footerElements.length}个<footer>标签元素`);
+      Array.from(footerElements)
+        .filter(el => this.isElementVisible(el))
+        // 检查footer是否在main元素内部，如果在就不提取（避免重复）
+        .filter(el => !mainElement || !mainElement.contains(el))
+        .forEach(el => {
+          content += this.getAllDirectText(el) + '\n';
+        });
+    }
+    
+    // 如果没有找到任何指定元素，则提取整个body的文本
+    if (content.trim() === '') {
       console.log('⚠️ 未找到指定元素，提取整个页面文本');
       content = this.getAllDirectText(body);
     }
@@ -155,7 +184,6 @@ function copyToClipboard(text: string): void {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => {
       console.log('✅ 使用 navigator.clipboard 复制成功');
-      showNotification('✅ 页面内容已复制到剪贴板！');
     }).catch(err => {
       console.error('❌ navigator.clipboard 复制失败:', err);
       console.error('错误详情:', err.name, err.message);
@@ -185,40 +213,12 @@ function fallbackCopyTextToClipboard(text: string): void {
     
     if (successful) {
       console.log('✅ 使用 document.execCommand 复制成功');
-      showNotification('✅ 页面内容已复制到剪贴板！');
     } else {
       console.error('❌ document.execCommand 复制失败');
-      showNotification('❌ 复制失败，请手动复制控制台中的内容');
     }
   } catch (err) {
     console.error('❌ 备用复制方法也失败了:', err);
-    showNotification('❌ 复制失败，请手动复制控制台中的内容');
   }
-}
-
-function showNotification(message: string): void {
-  const notification = document.createElement('div');
-  notification.textContent = message;
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: #4CAF50;
-    color: white;
-    padding: 12px;
-    z-index: 10000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    transition: opacity 0.3s ease;
-  `;
-  
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    setTimeout(() => {
-      document.body.removeChild(notification);
-    }, 300);
-  }, 3000);
 }
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
