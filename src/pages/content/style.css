@@ -1,5 +1,4 @@
-@import "tailwindcss";
-
+/* 移除了Tailwind CSS导入，避免影响页面布局 */
 .your-class {
     color: aliceblue;
 }

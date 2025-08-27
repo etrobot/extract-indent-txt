@@ -187,28 +187,39 @@ function copyToClipboard(text: string): void {
 }
 
 function fallbackCopyTextToClipboard(text: string): void {
+  const textArea = document.createElement('textarea');
   try {
-    const textArea = document.createElement('textarea');
     textArea.value = text;
-    textArea.style.top = '0';
-    textArea.style.left = '0';
+    // 确保 textarea 不可见且不影响布局
     textArea.style.position = 'fixed';
     textArea.style.opacity = '0';
+    textArea.style.pointerEvents = 'none';
+    textArea.style.width = '0';
+    textArea.style.height = '0';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
     
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
     
-    const successful = document.execCommand('copy');
-    document.body.removeChild(textArea);
-    
-    if (successful) {
-      console.log('✅ 使用 document.execCommand 复制成功');
-    } else {
-      console.error('❌ document.execCommand 复制失败');
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        console.log('✅ 使用 document.execCommand 复制成功');
+      } else {
+        console.error('❌ 复制失败：无法执行复制命令');
+      }
+    } catch (err) {
+      console.error('❌ 复制失败：', err);
     }
   } catch (err) {
-    console.error('❌ 备用复制方法也失败了:', err);
+    console.error('❌ 复制过程中发生错误：', err);
+  } finally {
+    // 确保总是移除 textarea 元素
+    if (textArea.parentNode) {
+      textArea.parentNode.removeChild(textArea);
+    }
   }
 }
 
