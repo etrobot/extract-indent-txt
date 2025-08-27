@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "name in manifest.json",
-  "description": "description in manifest.json",
+  "name": "Markmap文本提取器",
+  "description": "一键提取网页所有文本到markmap格式（DOM嵌套作为层级）并复制到剪贴板",
   "options_ui": {
     "page": "src/pages/options/index.html"
   },
@@ -11,14 +11,16 @@
       "32": "icon-32.png"
     }
   },
-  "chrome_url_overrides": {
-    "newtab": "src/pages/newtab/index.html"
+  "background": {
+    "service_worker": "src/pages/background/index.ts"
   },
   "icons": {
     "128": "icon-128.png"
   },
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "clipboardWrite",
+    "scripting"
   ],
   "content_scripts": [
     {

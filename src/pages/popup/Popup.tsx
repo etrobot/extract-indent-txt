@@ -1,24 +1,86 @@
-import React from 'react';
-import logo from '@assets/img/logo.svg';
+import React, { useState } from 'react';
 
 export default function Popup() {
+  const [status, setStatus] = useState<'idle' | 'extracting' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState<string>('');
+
+  const handleExtract = async () => {
+    setStatus('extracting');
+    setMessage('正在提取网页文本...');
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      if (!tab.id) {
+        throw new Error('无法获取当前标签页');
+      }
+
+      chrome.tabs.sendMessage(tab.id, { action: 'extractText' }, (response) => {
+        if (chrome.runtime.lastError) {
+          setStatus('error');
+          setMessage('提取失败：' + chrome.runtime.lastError.message);
+        } else if (response && response.success) {
+          setStatus('success');
+          setMessage('文本已成功复制到剪贴板！');
+        } else {
+          setStatus('error');
+          setMessage('提取失败：' + (response?.error || '未知错误'));
+        }
+      });
+    } catch (error) {
+      setStatus('error');
+      setMessage('提取失败：' + (error instanceof Error ? error.message : '未知错误'));
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (status) {
+      case 'extracting': return 'text-blue-600';
+      case 'success': return 'text-green-600';
+      case 'error': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+
   return (
-    <div className="absolute top-0 left-0 right-0 bottom-0 text-center h-full p-3 bg-gray-800">
-      <header className="flex flex-col items-center justify-center text-white">
-        <img src={logo} className="h-36 pointer-events-none animate-spin-slow" alt="logo" />
-        <p>
-          Edit <code>src/pages/popup/Popup.jsx</code> and save to reload.
+    <div className="w-80 p-6 bg-white">
+      <div className="text-center">
+        <h1 className="text-xl font-bold text-gray-800 mb-4">
+          📊 Markmap文本提取器
+        </h1>
+        
+        <p className="text-sm text-gray-600 mb-6">
+          一键提取网页所有文本到markmap格式，DOM嵌套作为层级结构
         </p>
-        <a
-          className="text-blue-400"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        <button
+          onClick={handleExtract}
+          disabled={status === 'extracting'}
+          className={`
+            w-full py-3 px-4 rounded-lg font-medium transition-colors
+            ${status === 'extracting' 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+            }
+            text-white
+          `}
         >
-          Learn React!
-        </a>
-        <p>Popup styled with TailwindCSS!</p>
-      </header>
+          {status === 'extracting' ? '提取中...' : '🚀 提取文本到剪贴板'}
+        </button>
+
+        {message && (
+          <div className={`mt-4 p-3 rounded-lg bg-gray-50 ${getStatusColor()}`}>
+            <p className="text-sm font-medium">{message}</p>
+          </div>
+        )}
+
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            使用方法：点击按钮即可提取当前网页的文本内容，
+            并以markmap格式复制到剪贴板
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
