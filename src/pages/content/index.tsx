@@ -14,7 +14,7 @@ class TextExtractor {
   constructor(options: Partial<ExtractOptions> = {}) {
     this.options = {
       includeHidden: false,
-      minTextLength: 1, // 降低最小文本长度要求
+      minTextLength: 1, 
       maxDepth: 10,
       skipTags: this.skipTags,
       ...options
@@ -49,54 +49,49 @@ class TextExtractor {
   }
 
   
-  // 新增：获取所有直接文本内容的方法（纯文本，不带格式）
-  // span元素文本拼接，其他元素换行
-  private getAllDirectText(element: Element): string {
-    let allText = '';
+private getAllDirectText(element: Element): string {
+  let allText = '';
+  
+  // 递归遍历所有元素，按正确顺序处理
+  const traverse = (el: Element, depth: number = 0) => {
+    if (this.shouldSkipElement(el)) {
+      return;
+    }
     
-    // 递归遍历所有元素，添加缩进
-    const traverse = (el: Element, depth: number = 0) => {
-      if (this.shouldSkipElement(el)) {
-        return;
-      }
-      
-      // 获取当前元素的直接文本内容
-      const directText = this.getDirectTextContent(el);
-      const tagName = el.tagName.toLowerCase();
-      const isCurrentSpan = tagName === 'span';
-      
-      if (directText) {
-        // 添加缩进空格（每层递归添加一个空格）
+    const tagName = el.tagName.toLowerCase();
+    const isSpan = tagName === 'span';
+    
+    // 首先处理当前元素的直接文本内容（只处理直接子文本节点）
+    const directText = this.getDirectTextContent(el);
+    if (directText) {
+      if (isSpan) {
+        // span元素：直接拼接，不换行不缩进
+        allText += directText;
+      } else {
+        // 其他元素：添加缩进和换行
         const indent = ' '.repeat(depth);
-        
-        // 如果是span元素，拼接文本（不换行，不添加缩进）
-        if (isCurrentSpan) {
-          allText += directText;
-        } 
-        // 如果是其他元素，添加缩进文本并换行
-        else {
-          allText += indent + directText + '\n';
-        }
+        allText += indent + directText + '\n';
       }
-      
-      // 递归处理子元素，增加深度
-      const children = Array.from(el.childNodes);
-      for (const child of children) {
-        if (child.nodeType === Node.ELEMENT_NODE) {
-          traverse(child as Element, depth + 1);
-        }
-      }
-    };
+    }
     
-    traverse(element);
-    return allText.trim();
-  }
+    // 然后按DOM顺序处理子元素
+    for (const child of el.children) {
+      traverse(child, isSpan ? depth : depth + 1);
+    }
+  };
+  
+  traverse(element);
+  return allText.trim();
+}
 
   public extractIndentedText(): string {
     const body = document.body;
     if (!body) return 'No content found';
     
     console.log('📊 开始提取页面文本...');
+    
+    // 获取页面标题
+    const title = 'Text extracted from the page: ';
     
     // 查找指定的元素：main标签、id为main的元素、class为main的元素，以及footer标签
     let content = '';
@@ -165,13 +160,9 @@ class TextExtractor {
       content = this.getAllDirectText(body);
     }
     
-    console.log('=== 提取的文本内容 ===');
-    console.log(content);
-    console.log('=== 文本内容结束 ===');
-    
-    console.log('✅ 提取完成，共生成', content.split('\n').length, '行内容');
-    
-    return content.trim() || 'No content found';
+    // 组合最终输出：标题 + 内容 + 分隔线
+    const finalOutput = `# ${title}\n\n${content.trim()}\n\n---`;    
+    return finalOutput || 'No content found';
   }
 }
 
@@ -240,5 +231,3 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
   return true;
 });
-
-console.log('Markmap text extractor loaded');
